@@ -1,40 +1,48 @@
-import { defineConfig } from 'vite'
-import RubyPlugin from 'vite-plugin-ruby'
+import { defineConfig, ConfigEnv } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { fileURLToPath, URL } from 'url'
+import vueI18n from '@intlify/vite-plugin-vue-i18n'
+import vuetify from 'vite-plugin-vuetify'
 
-function multipleBuilds(options) {
-  return {
-    name: 'multiple-builds',
-    configResolved(config) {
-      const { builds = [] } = options; 
-      builds.forEach((build) => {
-        const { input, output, ...otherOptions } = build;
-        config.build.outputs.push({
-          ...config.build, 
-          ...otherOptions, 
-          input,
-          output: {
-            filename: output,
-            ...config.build.output, 
-          },
-        });
-      });
+const proxyUrl: string = 'http://localhost:3000'
+
+export default ({ command }: ConfigEnv) => {
+  const version = process.env.VITE_BUILD_VERSION;
+  const entryDir = `./src/v${version}`;
+
+  return defineConfig({
+    plugins: [
+      vue(),
+      vuetify({ autoImport: true }),
+      vueI18n({
+        include: fileURLToPath(
+          new URL(entryDir + '/locales/**', import.meta.url)
+        ),
+      }),
+    ],
+    resolve: {
+      alias: {
+        '#': fileURLToPath(new URL(entryDir, import.meta.url)),
+        '@': fileURLToPath(new URL(entryDir + '/components', import.meta.url)),
+      },
     },
-  };
+    base: '/simulatorvue/',
+    build: {
+      outDir:  `../public/simulatorvue-${version}`, // Conditionally set for builds
+      assetsDir: 'assets',
+      chunkSizeWarningLimit: 1600,
+    },
+    server: {
+      port: 4000,
+      proxy: {
+        '^/(?!(simulatorvue)).*': {
+          target: proxyUrl,
+          changeOrigin: true,
+          headers: {
+            origin: proxyUrl,
+          },
+        },
+      },
+    },
+  })
 }
-export default defineConfig({
-  plugins: [
-    multipleBuilds({
-      builds: [
-        { 
-          input: './app/javascript/enrtypoints/v1',
-          output: './public/v1/vite',
-        },
-        {
-          input: './app/javascript/enrtypoints/v2',
-          output: './public/v2/vite',
-        },
-      ],
-    }),
-    RubyPlugin(),
-  ],
-});
