@@ -1,0 +1,25 @@
+name: Create Version Branch
+
+on:
+  push:
+    tags:
+      - v[0-9]+  # Matches tags starting with 'v' followed by one or more digits
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get tag name
+        id: get_tag
+        run: echo ::set-output name=TAG ${{ github.ref }}
+
+      - name: Extract version number
+        id: extract_version
+        run: echo "VERSION=${{ steps.get_tag.outputs.TAG##v }}"
+
+      - name: Create branch (v1 or v2)
+        run: |
+          git checkout -b "v${{ steps.extract_version }}"
+          git push origin "v${{ steps.extract_version }}"
